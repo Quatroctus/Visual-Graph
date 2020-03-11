@@ -19,6 +19,11 @@ struct Arc {
 };
 
 template <typename V>
+bool operator!=(const std::pair<Node<V>, std::vector<Arc<V>>> &first, std::pair<Node<V>, std::vector<Arc<V>>> second) {
+	return first.first.value != second.first.value;
+}
+
+template <typename V>
 class Graph;
 
 template <typename V>
@@ -43,7 +48,6 @@ struct Connection {
 template <typename V>
 class Graph {
 
-	std::vector<Node<V>> nodes;
 	HashMap<V, std::pair<Node<V>, std::vector<Arc<V>>>> nodeMap;
 
 	Node<V> createNode(V value) {
@@ -72,11 +76,7 @@ public:
 	}
 
 	Graph<V> &addArc(V first, V second, int weight) {
-		Node<V> firstNode = createNode(first);
-		bool contains = nodeMap.contains(first);
-		std::pair<Node<V>, std::vector<Arc<V>>> &firstEntry = nodeMap.queryOrPutIfEmpty(first, std::make_pair(nodes.back(), std::vector<Arc<V>>()));
-		nodes.push_back(firstNode);
-		std::cout << "List: " << &nodes.back() << " Map: " << &nodeMap.query(first).value << std::endl;
+		std::pair<Node<V>, std::vector<Arc<V>>> &firstEntry = nodeMap.queryOrPutIfEmpty(first, std::make_pair(createNode(first), std::vector<Arc<V>>()));
 		bool found = false;
 		for (Arc<V> arc : firstEntry.second) {
 			if (arc.connectedValue == second) {
@@ -86,10 +86,7 @@ public:
 		}
 		if (!found)
 			firstEntry.second.push_back(Arc<V>(weight, second));
-		Node<V> secondNode = createNode(first);
-		if (!nodeMap.contains(second))
-			nodes.push_back(secondNode);
-		std::pair<Node<V>, std::vector<Arc<V>>> &secondEntry = nodeMap.queryOrPutIfEmpty(second, std::make_pair(nodes.back(), std::vector<Arc<V>>()));
+		std::pair<Node<V>, std::vector<Arc<V>>> &secondEntry = nodeMap.queryOrPutIfEmpty(second, std::make_pair(createNode(second), std::vector<Arc<V>>()));
 		found = false;
 		for (Arc<V> arc : secondEntry.second) {
 			if (arc.connectedValue == first) {
@@ -103,16 +100,13 @@ public:
 	}
 
 	Graph<V> &finish(Connection<V> &connection) {
-		std::vector<std::pair<V, int>> arcs;
+		std::vector<KeyValue<V, int>> arcs;
 		connection.connections.getEntries(&arcs);
-		for (std::pair<V, int> arcData : arcs) {
-			addArc(connection.value, arcData.first, arcData.second);
+		nodeMap.queryOrPutIfEmpty(connection.value, std::make_pair(createNode(connection.value), std::vector<Arc<V>>()));
+		for (KeyValue<V, int> arcData : arcs) {
+			addArc(connection.value, arcData.getKey(), arcData.getValue());
 		}
 		return *this;
-	}
-	
-	std::vector<Node<V>> getNodes() {
-		return nodes;
 	}
 
 	HashMap<V, std::pair<Node<V>, std::vector<Arc<V>>>> getNodeMap() {

@@ -1,6 +1,6 @@
 #include "input.h"
 
-int Input::scroll = 0, Input::mouseX = 0, Input::mouseY = 0, Input::relX = 0, Input::relY = 0;
+int Input::scroll = 0, Input::mouseX = 0, Input::prevMouseX = 0, Input::prevMouseY = 0, Input::mouseY = 0, Input::relX = 0, Input::relY = 0;
 InputMap Input::keys = InputMap();
 InputMap Input::mouseButtons = InputMap();
 

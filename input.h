@@ -15,7 +15,7 @@ public:
 };
 
 struct Input {
-	static int scroll, mouseX, mouseY, relX, relY;
+	static int scroll, prevMouseX, prevMouseY, mouseX, mouseY, relX, relY;
 	static InputMap mouseButtons;
 	static InputMap keys;
 };

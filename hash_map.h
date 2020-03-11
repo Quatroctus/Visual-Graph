@@ -5,6 +5,32 @@
 #include <vector>
 
 template <typename K, typename V>
+class KeyValue {
+	K k;
+	K &key;
+	V v;
+	V &value;
+
+public:
+	KeyValue(K &key, V &value) : k(key), key(key), v(value), value(value) {}
+
+	K &getKey() {
+		if (key != k) {
+			return k;
+		}
+		return key;
+	}
+
+	V &getValue() {
+		if (value != v) {
+			return v;
+		}
+		return value;
+	}
+
+};
+
+template <typename K, typename V>
 struct Map {
 	virtual ~Map() {}
 
@@ -18,7 +44,7 @@ struct Map {
 
 	virtual V &queryOrPutIfEmpty(K key, V val) = 0;
 
-	virtual void getEntries(std::vector<std::pair<K, V>> *entries, bool empty=false) = 0;
+	virtual void getEntries(std::vector<KeyValue<K, V>> *entries, bool empty = false) = 0;
 
 	virtual size_t size() = 0;
 
@@ -28,11 +54,13 @@ struct Map {
 			V value;
 			Map<K, V> *map;
 			Something() : value(V()) {}
+			Something(Something &something) : value(something.value) {}
 			~Something() {
 				value.~V();
 			}
 		} entry;
 		Entry() : isValue(true) {}
+		Entry(Entry &entry) : isValue(entry.isValue), entry(entry.entry) {}
 	};
 };
 
@@ -69,28 +97,28 @@ class HashMap : public Map<K, V> {
 	}
 
 	void rehash() {
-		std::vector<std::pair<K, V>> entries;
-		getEntries(&entries);
+		std::vector<KeyValue<K, V>> entries;
+		getEntries(&entries, true);
 		length *= 2;
 		count = 0;
 		loadFactor = 0.0F;
 		createArrays();
-		for (std::pair<K, V> entry : entries) {
-			this->put(entry.first, entry.second);
+		for (KeyValue<K, V> entry : entries) {
+			this->put(entry.getKey(), entry.getValue());
 		}
 	}
 
 public:
-	HashMap() : length(2), count(0), depth(0), loadFactor(0.0F), hash(nullptr) {
+	HashMap() : length(11), count(0), depth(1), loadFactor(0.0F), hash(nullptr) {
 		createArrays();
 	}
 	HashMap(size_t length, size_t depth, size_t (*hash)(K key)) : length(length), count(0), depth(depth), loadFactor(0.0F), hash(hash) {
 		createArrays();
 	}
-	HashMap(size_t (*hash)(K key)) : length(2), count(0), depth(0), loadFactor(0.0F), hash(hash) {
+	HashMap(size_t (*hash)(K key)) : length(11), count(0), depth(1), loadFactor(0.0F), hash(hash) {
 		createArrays();
 	}
-	HashMap(size_t length, size_t (*hash)(K key) = nullptr) : length(length), count(0), depth(0), loadFactor(0.0F), hash(hash) {
+	HashMap(size_t length, size_t (*hash)(K key) = nullptr) : length(length), count(0), depth(1), loadFactor(0.0F), hash(hash) {
 		createArrays();
 	}
 	~HashMap() override {
@@ -110,18 +138,20 @@ public:
 				values[index].entry.value = value;
 			else
 				values[index].entry.map->put(key, value);
-		} else if (values[index].isValue) {
+		}
+		else if (values[index].isValue) {
 			Map<K, V>::template Entry &entry = values[index];
 			V val = entry.entry.value;
 			entry.isValue = false;
 			entry.entry.map = new HashMap<K, V>(2, depth + 1, hash);
 			entry.entry.map->put(actualKey.value, val);
 			entry.entry.map->put(key, value);
-		} else {
+		}
+		else {
 			values[index].entry.map->put(key, value);
 		}
 		count++;
-		loadFactor = float(count / length);
+		loadFactor = float(count) / float(length);
 		return *this;
 	}
 
@@ -134,7 +164,8 @@ public:
 				count--;
 				loadFactor = float(count / length);
 				return values[index].entry.value;
-			} else {
+			}
+			else {
 				Optional<V> optVal = values[index].entry.map->remove(key);
 				if (optVal.exists) {
 					count--;
@@ -167,45 +198,35 @@ public:
 	}
 
 	V &queryOrPutIfEmpty(K key, V value) {
+		if (!contains(key))
+			put(key, value);
 		size_t index = hashEntry(key);
-		Optional<K> &actualKey = keys[index];
-		if (actualKey.exists) {
-			Map<K, V>::template Entry &entry = values[index];
-			if (entry.isValue) {
-				if (actualKey.value == key) {
-					return entry.entry.value;
-				} else {
-					V val = entry.entry.value;
-					entry.isValue = false;
-					entry.entry.map = new HashMap<K, V>(2, depth + 1, hash);
-					entry.entry.map->put(actualKey.value, val);
-					entry.entry.map->put(key, value);
-					return entry.entry.map->queryOrPutIfEmpty(key, value);
-				}
-			}
-			else
-				return entry.entry.map->queryOrPutIfEmpty(key, value);
-		}
-		else {
-			values[index].entry.value = value;
-			count++;
-			loadFactor = (float) count / (float) length;
-			actualKey.exists = true;
+		if (values[index].isValue) {
 			return values[index].entry.value;
 		}
+		return values[index].entry.map->queryOrPutIfEmpty(key, value);
 	}
 
-	void getEntries(std::vector<std::pair<K, V>> *entries, bool empty = false) override {
+	void getEntries(std::vector<KeyValue<K, V>> *entries, bool empty = false) override {
 		for (size_t i = 0; i < length; i++) {
 			Optional<K> &actualKey = keys[i];
 			if (actualKey.exists) {
-				Map<K, V>::template Entry &value = values[i];
-				if (value.isValue && entries != NULL)
-					entries->push_back(std::make_pair(actualKey.value, value.entry.value));
-				else if (!value.isValue) {
-					value.entry.map->getEntries(entries, empty);
-					if (empty)
+				if (empty) {
+					Map<K, V>::template Entry value = values[i];
+					if (value.isValue && entries != NULL)
+						entries->push_back(KeyValue<K, V>(actualKey.value, value.entry.value));
+					else if (!value.isValue) {
+						value.entry.map->getEntries(entries, empty);
 						delete value.entry.map;
+					}
+				}
+				else {
+					Map<K, V>::template Entry &value = values[i];
+					if (value.isValue && entries != NULL)
+						entries->push_back(KeyValue<K, V>(actualKey.value, value.entry.value));
+					else if (!value.isValue) {
+						value.entry.map->getEntries(entries, empty);
+					}
 				}
 			}
 		}
@@ -218,5 +239,4 @@ public:
 	}
 
 	size_t size() { return count; }
-
 };

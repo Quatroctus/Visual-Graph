@@ -10,12 +10,12 @@ struct Camera {
 
 template <typename V>
 void drawGraph(SDL_Renderer *renderer, Graph<V> graph) {
-	std::vector<std::pair<V, std::pair<Node<V>, std::vector<Arc<V>>>>> entries;
+	std::vector<KeyValue<V, std::pair<Node<V>, std::vector<Arc<V>>>>> entries;
 	graph.getNodeMap().getEntries(&entries);
 	for (auto entry : entries) {
-		drawNode(renderer, entry.second.first);
-		for (Arc<V> arc : entry.second.second) {
-			drawArc(renderer, entry.second.first, graph.getNodeMap().query(arc.connectedValue).value.first);
+		drawNode(renderer, entry.getValue().first);
+		for (Arc<V> arc : entry.getValue().second) {
+			drawArc(renderer, entry.getValue().first, graph.getNodeMap().query(arc.connectedValue).value.first);
 		}
 	}
 }

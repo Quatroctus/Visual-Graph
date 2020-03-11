@@ -50,14 +50,13 @@ void handleInputEvents(SDL_Event ev) {
 
 void handleEvent(SDL_Event ev) {
 	switch (ev.type) {
-	case SDL_WINDOWEVENT:
-	{
+	case SDL_WINDOWEVENT: {
 		switch (ev.window.event) {
 		case SDL_WINDOWEVENT_RESIZED:
 		case SDL_WINDOWEVENT_SIZE_CHANGED:
 			SDL_GetWindowSize(window, &actual.w, &actual.h);
-			Camera::xScale = (float) base.w / (float) actual.w;
-			Camera::yScale = (float) base.h / (float) actual.h;
+			Camera::xScale = (float)base.w / (float)actual.w;
+			Camera::yScale = (float)base.h / (float)actual.h;
 			break;
 		}
 	} break;
@@ -68,16 +67,22 @@ void handleEvent(SDL_Event ev) {
 
 void update() {
 	if (Input::mouseButtons.isDown(SDL_BUTTON_RIGHT)) {
-		std::cout << "Right Mouse Down" << std::endl;
-		SDL_Point mouse = {(int) (Input::mouseX * Camera::xScale - Camera::xOffset), (int) (Input::mouseY * Camera::yScale - Camera::yOffset)};
-		for (Node<int> node : graph.getNodes()) {
-			SDL_Rect renderedRect = { node.pos.x - 12, node.pos.y - 8, node.pos.w, node.pos.h };
-			if (SDL_PointInRect(&mouse, &node.pos)) {
+		SDL_Point mouse = { (int)(Input::prevMouseX * Camera::xScale - Camera::xOffset), (int)(Input::prevMouseY * Camera::yScale - Camera::yOffset) };
+		std::vector<KeyValue<int, std::pair<Node<int>, std::vector<Arc<int>>>>> entries;
+		graph.getNodeMap().getEntries(&entries);
+		for (auto entry : entries) {
+			Node<int> &node = entry.getValue().first;
+			SDL_Rect renderedRect = { node.pos.x - (node.pos.w / 2), node.pos.y - (node.pos.h / 2), node.pos.w, node.pos.h };
+			if (SDL_PointInRect(&mouse, &renderedRect)) {
 				node.pos.x += Input::relX;
 				node.pos.y += Input::relY;
 			}
 		}
 	}
+	Input::prevMouseX = Input::mouseX;
+	Input::prevMouseY = Input::mouseY;
+	Input::relX = 0;
+	Input::relY = 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -103,6 +108,10 @@ int main(int argc, char *argv[]) {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 1);
 
 	graph.addValue(0).addArc(1, 10).finish();
+	graph.addValue(10).addArc(1, 20).addArc(0, 15).finish();
+	graph.addValue(20).addArc(0, 5).finish();
+	graph.addValue(30).addArc(20, 1).addArc(1, 100).finish();
+	graph.addValue(100).finish();
 
 	bool running = true;
 	while (running) {
