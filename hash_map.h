@@ -86,7 +86,11 @@ class HashMap : public Map<K, V> {
 		if (hash != nullptr)
 			return (hash(key) * depthMultiplier) % length;
 		else if (primitive<K>::exists())
-			return (primitive<K>::hash(key) * 31 * depthMultiplier) % length;
+			size_t x = primitive<K>::hash(key);
+			x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+			x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+			x = x ^ (x >> 31);
+			return x;
 		else if (std::string *val = reinterpret_cast<std::string *>(&key)) {
 			size_t hash = 7;
 			for (size_t i = 0; i < val->size(); i++)
@@ -109,13 +113,13 @@ class HashMap : public Map<K, V> {
 	}
 
 public:
-	HashMap() : length(11), count(0), depth(1), loadFactor(0.0F), hash(nullptr) {
+	HashMap() : length(4), count(0), depth(1), loadFactor(0.0F), hash(nullptr) {
 		createArrays();
 	}
 	HashMap(size_t length, size_t depth, size_t (*hash)(K key)) : length(length), count(0), depth(depth), loadFactor(0.0F), hash(hash) {
 		createArrays();
 	}
-	HashMap(size_t (*hash)(K key)) : length(11), count(0), depth(1), loadFactor(0.0F), hash(hash) {
+	HashMap(size_t (*hash)(K key)) : length(4), count(0), depth(1), loadFactor(0.0F), hash(hash) {
 		createArrays();
 	}
 	HashMap(size_t length, size_t (*hash)(K key) = nullptr) : length(length), count(0), depth(1), loadFactor(0.0F), hash(hash) {

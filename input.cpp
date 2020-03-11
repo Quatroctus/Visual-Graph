@@ -1,6 +1,7 @@
 #include "input.h"
 
-int Input::scroll = 0, Input::mouseX = 0, Input::prevMouseX = 0, Input::prevMouseY = 0, Input::mouseY = 0, Input::relX = 0, Input::relY = 0;
+int Input::scroll = 0, Input::mouseX = 0, Input::mouseY = 0;
+float Input::relX = 0.0F, Input::relY = 0.0F;
 InputMap Input::keys = InputMap();
 InputMap Input::mouseButtons = InputMap();
 
@@ -26,6 +27,6 @@ bool InputMap::isDown(int id) {
 bool InputMap::isUp(int id) {
 	auto value = this->map.find(id);
 	if (value != this->map.end())
-		return value->second;
-	return false;
+		return !value->second;
+	return true;
 }

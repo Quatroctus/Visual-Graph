@@ -2,7 +2,7 @@
 #include <unordered_map>
 
 class InputMap {
-	
+
 	std::unordered_map<int, bool> map;
 
 public:
@@ -15,7 +15,8 @@ public:
 };
 
 struct Input {
-	static int scroll, prevMouseX, prevMouseY, mouseX, mouseY, relX, relY;
+	static int scroll, mouseX, mouseY;
+	static float relX, relY;
 	static InputMap mouseButtons;
 	static InputMap keys;
 };

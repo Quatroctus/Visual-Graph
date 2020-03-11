@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
+#include "hash_primitives.h"
 #include "optional.h"
 
-// TODO
 template <typename K, typename V>
 class Entry {
 	K k;
@@ -30,8 +30,8 @@ public:
 template <typename K, typename V>
 class HashMap {
 
-	size_t length, count, depth;
-	double loadFactor = 0.0D;
+	size_t length, count;
+	double loadFactor = 0.0;
 	const double rehashFactor = 0.65;
 	Optional<K> *keys;
 	V *values;
@@ -39,72 +39,83 @@ class HashMap {
 	size_t (*hash)(K key);
 
 	size_t hashKey(K key) {
-		size_t depthMultiplier = 13 * depth;
-		for (size_t i = 0; i < depth; i++)
-			depthMultiplier *= 29;
 		if (hash != nullptr)
-			return (hash(key) * depthMultiplier) % length;
-		else if (primitive<K>::exists())
-			return (primitive<K>::hash(key) * 31 * depthMultiplier) % length;
-		else if (std::string *val = reinterpret_cast<std::string *>(&key)) {
+			return hash(key) % length;
+		else if (primitive<K>::exists()) {
+			size_t x = primitive<K>::hash(key);
+			x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+			x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+			x = x ^ (x >> 31);
+			return x % length;
+		} else if (std::string *val = reinterpret_cast<std::string *>(&key)) {
 			size_t hash = 7;
 			for (size_t i = 0; i < val->size(); i++)
 				hash = (hash * 17) + ((*val)[i] * i + 1);
-			return (hash * depthMultiplier) % length;
+			return hash % length;
 		}
 		throw "Unable to Hash Key.";
 	}
 
 	void rehash() {
-
+		Optional<K> *keysCopy = keys;
+		V *valuesCopy = values;
+		loadFactor = 0.0;
+		count = 0;
+		length *= 2;
+		keys = new Optional<K>[length];
+		values = new V[length];
+		for (size_t i = 0; i < length / 2; i++) {
+			if (keysCopy[i].exists) {
+				put(keysCopy[i].value, valuesCopy[i]);
+			}
+		}
 	}
 
 public:
-	HashMap() : length(2), count(0), depth(1), keys(new Optional<K>[length], values(new Entry<K, V>[length]), hash(NULL)) {}
-	HashMap(size_t length, size_t depth, size_t (*hash)(K key)) : length(length), count(0), depth(depth), keys(new Optional<K>[length]), values(new Entry<K, V>[length]), hash(hash)) {}
+	HashMap() : length(2), count(0), keys(new Optional<K>[length]), values(new V[length]), hash(NULL) {}
+	HashMap(size_t length, size_t (*hash)(K key)) : length(length), count(0), keys(new Optional<K>[length], values(new V[length]), hash(hash)) {}
 
-	HashMap<K, V> &put(K key, V &value) override {
+	HashMap<K, V> &put(K key, V value) {
 		if (loadFactor >= rehashFactor)
 			rehash();
 		size_t index = hashKey(key);
 		Optional<K> &actualKey = this->keys[index];
-		if (!actualKey.exists || actualKey.value == key) {
-			actualKey.exists = true;
-			actualKey.value = key;
-			if (values[index].isValue)
-				values[index].value.value = value;
-			else
-				values[index].value.map->put(key, value);
+		if (actualKey.exists) {
+			rehash();
+			return put(key, value);
 		}
-		else if (values[index].isValue) {
-			Entry<K, V> &entry = values[index];
-			V *val = entry.value.value;
-			entry.isValue = false;
-			entry.value.map = new HashMap<K, V>(2, depth + 1, hash);
-			entry.value.map->put(actualKey.value, *val);
-			entry.value.map->put(key, value);
-		}
-		else {
-			values[index].value.map->put(key, value);
-		}
+		actualKey.exists = true;
+		actualKey.value = key;
+		values[index] = value;
 		count++;
-		loadFactor = float(count / length);
+		loadFactor = double(count) / double(length);
 		return *this;
 	}
 
-	V &get(K key) override {
-		size_t index = hashEntry(key);
+	Optional<V *> get(K key) {
+		size_t index = hashKey(key);
 		Optional<K> &actualKey = keys[index];
-		if (!actualKey.exists)
-			return Optional<V>();
-		Entry<K, V> &value = values[index];
-		if (!value.isValue)
-			return value.entry.map->get(key);
-		if (actualKey.value == key)
-			return Optional<V>(value.entry.value);
-		return Optional<V>();
+		if (actualKey.exists)
+			return Optional<V *>(&values[index]);
+		return Optional<V *>();
 	}
 
-	V &getOrPutIfEmpty(K key, Value value) {
+	V &getOrPutIfEmpty(K key, V value) {
+		size_t index = hashKey(key);
+		Optional<K> &actualKey = keys[index];
+		if (!actualKey.exists || actualKey.value != key)
+			put(key, value);
+		return values[index];
 	}
+
+	void getEntries(std::vector<Entry<K, V>> &entries) {
+		for (size_t i = 0; i < length; i++) {
+			if (keys[i].exists) {
+				entries.push_back(Entry<K, V>(keys[i].value, values[i]));
+			}
+		}
+	}
+
+	size_t size() { return count; }
+
 };

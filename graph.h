@@ -1,13 +1,15 @@
 #pragma once
 #include <vector>
-#include "hash_map.h"
+#include "hashmap.h"
 
 template <typename V>
 struct Node {
+	
 	SDL_Rect pos;
 	V value;
-	Node() : pos({0, 0, 24, 16}), value(V()) {}
-	Node(int x, int y, V value) : pos({ x, y, 24, 16 }), value(value) {}
+	SDL_Texture *texture;
+	Node() : pos({0, 0, 24, 16}), value(V()), texture(NULL) {}
+	Node(int x, int y, V value) : pos({ x, y, 24, 16 }), value(value), texture(NULL) {}
 };
 
 template <typename V>
@@ -76,7 +78,7 @@ public:
 	}
 
 	Graph<V> &addArc(V first, V second, int weight) {
-		std::pair<Node<V>, std::vector<Arc<V>>> &firstEntry = nodeMap.queryOrPutIfEmpty(first, std::make_pair(createNode(first), std::vector<Arc<V>>()));
+		std::pair<Node<V>, std::vector<Arc<V>>> &firstEntry = nodeMap.getOrPutIfEmpty(first, std::make_pair(createNode(first), std::vector<Arc<V>>()));
 		bool found = false;
 		for (Arc<V> arc : firstEntry.second) {
 			if (arc.connectedValue == second) {
@@ -86,7 +88,7 @@ public:
 		}
 		if (!found)
 			firstEntry.second.push_back(Arc<V>(weight, second));
-		std::pair<Node<V>, std::vector<Arc<V>>> &secondEntry = nodeMap.queryOrPutIfEmpty(second, std::make_pair(createNode(second), std::vector<Arc<V>>()));
+		std::pair<Node<V>, std::vector<Arc<V>>> &secondEntry = nodeMap.getOrPutIfEmpty(second, std::make_pair(createNode(second), std::vector<Arc<V>>()));
 		found = false;
 		for (Arc<V> arc : secondEntry.second) {
 			if (arc.connectedValue == first) {
@@ -100,10 +102,10 @@ public:
 	}
 
 	Graph<V> &finish(Connection<V> &connection) {
-		std::vector<KeyValue<V, int>> arcs;
-		connection.connections.getEntries(&arcs);
-		nodeMap.queryOrPutIfEmpty(connection.value, std::make_pair(createNode(connection.value), std::vector<Arc<V>>()));
-		for (KeyValue<V, int> arcData : arcs) {
+		std::vector<Entry<V, int>> arcs;
+		connection.connections.getEntries(arcs);
+		nodeMap.getOrPutIfEmpty(connection.value, std::make_pair(createNode(connection.value), std::vector<Arc<V>>()));
+		for (Entry<V, int> arcData : arcs) {
 			addArc(connection.value, arcData.getKey(), arcData.getValue());
 		}
 		return *this;
