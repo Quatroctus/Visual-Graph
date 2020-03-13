@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include "SDL.h"
+#include <SDL.h>
 #include <SDL_ttf.h>
 #include "graphics.h"
 #include "input.h"
@@ -12,7 +12,12 @@ SDL_Renderer *renderer;
 SDL_Texture *drawingTexture;
 
 Graph<int> graph;
-Node<int> *activeNode = NULL;
+std::string changingValue;
+bool beginkeyboardListening = false;
+Arc<int> *changingArcs[2];
+Node<int> *motionNode = NULL, *selectedNode = NULL, *connectedNode = NULL;
+int nodeId = 0;
+unsigned int lastPressed;
 
 constexpr int WIDTH = 16 * 50, HEIGHT = 9 * 50;
 
@@ -35,34 +40,112 @@ void handleInputEvents(SDL_Event ev) {
 				Node<int> &node = entry.getValue().first;
 				SDL_Rect renderedRect = { node.pos.x - (node.pos.w / 2), node.pos.y - (node.pos.h / 2), node.pos.w, node.pos.h };
 				if (SDL_PointInRect(&mouse, &renderedRect))
-					activeNode = &node;
+					motionNode = &node;
 			}
 		}
 		break;
-	case SDL_MOUSEBUTTONUP:
+	case SDL_MOUSEBUTTONUP: {
 		Input::mouseButtons.up(ev.button.button);
-		if (Input::mouseButtons.isUp(SDL_BUTTON_RIGHT)) {
+		if (ev.button.button == SDL_BUTTON_RIGHT) {
 			Input::relX = 0.0F;
 			Input::relY = 0.0F;
-			activeNode = NULL;
+			motionNode = NULL;
 		}
-		break;
+		else if (ev.button.button == SDL_BUTTON_LEFT) {
+			SDL_Point mouse = { (int)(float(Input::mouseX) - Camera::xOffset), (int)(float(Input::mouseY) - Camera::yOffset) };
+			std::vector<Entry<int, std::pair<Node<int>, std::vector<Arc<int>>>>> entries;
+			graph.getNodeMap().getEntries(entries);
+			bool noCollision = true;
+			for (auto entry : entries) {
+				Node<int> &node = entry.getValue().first;
+				SDL_Rect renderedRect = { node.pos.x - (node.pos.w / 2), node.pos.y - (node.pos.h / 2), node.pos.w, node.pos.h };
+				if (SDL_PointInRect(&mouse, &renderedRect)) {
+					if (Input::keys.isDown(SDLK_LCTRL) || Input::keys.isDown(SDLK_RCTRL)) {
+						if (selectedNode != NULL) {
+							if (connectedNode != NULL) {
+								connectedNode->selected = false;
+							}
+							for (Arc<int> &arc : graph.getNodeMap().get(node.value).value->second) {
+								if (arc.connectedValue == selectedNode->value) {
+									changingArcs[0] = &arc;
+								}
+							}
+							for (Arc<int> &arc : graph.getNodeMap().get(selectedNode->value).value->second) {
+								if (arc.connectedValue == node.value) {
+									changingArcs[1] = &arc;
+								}
+							}
+							beginkeyboardListening = changingArcs[0] != NULL && changingArcs[1] != NULL;
+							if (beginkeyboardListening) {
+								connectedNode = &node;
+								node.selected = true;
+								noCollision = false;
+							}
+						}
+					}
+					else if (selectedNode != NULL) {
+						graph.addArc(selectedNode->value, node.value, 1); // TODO: Think of some way to have the user specify the weight.
+						graph.addArc(node.value, selectedNode->value, 1);
+						selectedNode->selected = false;
+						selectedNode = NULL;
+					}
+					else {
+						selectedNode = &node;
+						node.selected = true;
+						noCollision = false;
+					}
+					break;
+				}
+			}
+			if (noCollision) {
+				if (selectedNode != NULL) {
+					selectedNode->selected = false;
+					selectedNode = NULL;
+				}
+				if (connectedNode != NULL) {
+					connectedNode->selected = false;
+					connectedNode = NULL;
+				}
+			}
+		}
+		unsigned int current = SDL_GetTicks();
+		if (current - lastPressed < 200 && ev.button.button == SDL_BUTTON_LEFT)
+			graph.addValue(nodeId++).finish();
+		lastPressed = SDL_GetTicks();
+	} break;
 	case SDL_KEYDOWN:
 		Input::keys.down(ev.key.keysym.sym);
 		break;
 	case SDL_KEYUP:
 		Input::keys.up(ev.key.keysym.sym);
+		if (beginkeyboardListening && ev.key.keysym.sym >= SDLK_0 && ev.key.keysym.sym <= SDLK_9) {
+			changingValue += (char)ev.key.keysym.sym;
+		}
+		else if (beginkeyboardListening && ev.key.keysym.sym == SDLK_BACKSPACE)
+			changingValue.pop_back();
+		else if (beginkeyboardListening && ev.key.keysym.sym == SDLK_RETURN) {
+			changingArcs[0]->weight = std::stoi(changingValue);
+			changingArcs[1]->weight = std::stoi(changingValue);
+			changingValue.clear();
+			selectedNode->selected = false;
+			connectedNode->selected = false;
+			selectedNode = NULL;
+			connectedNode = NULL;
+			changingArcs[0] = NULL;
+			changingArcs[1] = NULL;
+			beginkeyboardListening = false;
+		}
 		break;
 	case SDL_MOUSEMOTION:
-		if (activeNode != NULL) {
+		if (motionNode != NULL) {
 			Input::relX += ev.motion.xrel * Camera::xScale;
 			Input::relY += ev.motion.yrel * Camera::yScale;
-			activeNode->pos.x += int(Input::relX);
-			activeNode->pos.y += int(Input::relY);
+			motionNode->pos.x += int(Input::relX);
+			motionNode->pos.y += int(Input::relY);
 			Input::relX -= int(Input::relX);
 			Input::relY -= int(Input::relY);
 		}
-		Input::mouseX = (int) (float(ev.motion.x) * Camera::xScale);
+		Input::mouseX = (int)(float(ev.motion.x) * Camera::xScale);
 		Input::mouseY = (int)(float(ev.motion.y) * Camera::yScale);
 		if (Input::mouseButtons.isDown(SDL_BUTTON_LEFT)) {
 			Camera::xOffset += ev.motion.xrel * Camera::xScale;
@@ -112,12 +195,6 @@ int main(int argc, char *argv[]) {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 1);
 	TTF_Init();
 
-	graph.addValue(0).addArc(1, 10).finish();
-	graph.addValue(10).addArc(1, 20).addArc(0, 15).finish();
-	graph.addValue(20).addArc(0, 5).finish();
-	graph.addValue(30).addArc(20, 1).addArc(1, 100).finish();
-	graph.addValue(100).finish();
-	
 	bool running = true;
 	while (running) {
 		SDL_Event ev;

@@ -1,15 +1,18 @@
 #pragma once
 #include <vector>
+#include <set>
 #include "hashmap.h"
 
 template <typename V>
 struct Node {
-	
+
 	SDL_Rect pos;
 	V value;
 	SDL_Texture *texture;
-	Node() : pos({0, 0, 24, 16}), value(V()), texture(NULL) {}
-	Node(int x, int y, V value) : pos({ x, y, 24, 16 }), value(value), texture(NULL) {}
+	bool selected;
+
+	Node() : pos({ 0, 0, 24, 16 }), value(V()), texture(NULL), selected(false) {}
+	Node(int x, int y, V value) : pos({ x, y, 24, 16 }), value(value), texture(NULL), selected(false) {}
 };
 
 template <typename V>
@@ -44,7 +47,6 @@ struct Connection {
 		this->owner->finish(*this);
 		return *owner;
 	}
-
 };
 
 template <typename V>
@@ -53,8 +55,8 @@ class Graph {
 	HashMap<V, std::pair<Node<V>, std::vector<Arc<V>>>> nodeMap;
 
 	Node<V> createNode(V value) {
-		int n = (int) nodeMap.size() + 1;
-		int k = (int) ceil((sqrt(n) - 1.0) / 2.0);
+		int n = (int)nodeMap.size() + 1;
+		int k = (int)ceil((sqrt(n) - 1.0) / 2.0);
 		int t = 2 * k + 1;
 		int m = t * t;
 		t -= 1;
@@ -70,7 +72,6 @@ class Graph {
 	}
 
 public:
-
 	Graph() : nodeMap(HashMap<V, std::pair<Node<V>, std::vector<Arc<V>>>>()) {}
 
 	Connection<V> addValue(V value) {
@@ -78,21 +79,23 @@ public:
 	}
 
 	Graph<V> &addArc(V first, V second, int weight) {
-		std::pair<Node<V>, std::vector<Arc<V>>> &firstEntry = nodeMap.getOrPutIfEmpty(first, std::make_pair(createNode(first), std::vector<Arc<V>>()));
+		if (first == second)
+			return *this;
+		Optional<std::pair<Node<V>, std::vector<Arc<V>>> *> firstEntry = nodeMap.get(first);
 		bool found = false;
-		for (Arc<V> arc : firstEntry.second) {
+		for (Arc<V> arc : firstEntry.value->second) {
 			if (arc.connectedValue == second) {
-				arc.weight = (int) fmin(arc.weight, weight);
+				arc.weight = (int)fmin(arc.weight, weight);
 				found = true;
 			}
 		}
 		if (!found)
-			firstEntry.second.push_back(Arc<V>(weight, second));
+			firstEntry.value->second.push_back(Arc<V>(weight, second));
 		std::pair<Node<V>, std::vector<Arc<V>>> &secondEntry = nodeMap.getOrPutIfEmpty(second, std::make_pair(createNode(second), std::vector<Arc<V>>()));
 		found = false;
 		for (Arc<V> arc : secondEntry.second) {
 			if (arc.connectedValue == first) {
-				arc.weight = (int) fmin(arc.weight, weight);
+				arc.weight = (int)fmin(arc.weight, weight);
 				found = true;
 			}
 		}
@@ -111,8 +114,17 @@ public:
 		return *this;
 	}
 
+	std::vector<Node<V>> getShortestPath(V start, V end) {
+		std::set<V> inSet;
+		std::vector<Node<V>> path;
+		inSet.insert(start);
+		while (true) {
+			
+		}
+		return path;
+	}
+
 	HashMap<V, std::pair<Node<V>, std::vector<Arc<V>>>> getNodeMap() {
 		return nodeMap;
 	}
-
 };
