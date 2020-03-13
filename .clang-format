@@ -20,7 +20,7 @@ BraceWrapping:
   AfterStruct: false    # TODO: verify
   AfterUnion: false    # TODO: verify
   BeforeCatch: true
-  BeforeElse: true
+  BeforeElse: false
   IndentBraces: false
   SplitEmptyFunction: true
   SplitEmptyRecord: true

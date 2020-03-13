@@ -61,9 +61,8 @@ void drawArc(SDL_Renderer *renderer, Node<V> n1, Node<V> n2, int weight) {
 	std::string text = std::to_string(weight);
 	surface = TTF_RenderText_Solid(FONT, text.c_str(), textColor);
 	texture = SDL_CreateTextureFromSurface(renderer, surface);
-	SDL_Rect dest = { (int) Camera::xOffset + n1.pos.x + ((n2.pos.x - n1.pos.x) / 2), (int) Camera::yOffset + n1.pos.y + ((n2.pos.y - n1.pos.y) / 2), surface->w, surface->h }; // TODO
+	SDL_Rect dest = { (int) Camera::xOffset + n1.pos.x + ((n2.pos.x - n1.pos.x) / 2), (int) Camera::yOffset + n1.pos.y + ((n2.pos.y - n1.pos.y) / 2), surface->w, surface->h };
 	SDL_RenderCopy(renderer, texture, NULL, &dest);
 	SDL_FreeSurface(surface);
 	SDL_DestroyTexture(texture);
-
 }

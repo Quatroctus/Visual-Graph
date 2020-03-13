@@ -12,7 +12,7 @@ class Entry {
 
 public:
 	Entry(K &key, V &value) : k(key), key(key), v(value), value(value) {}
-	
+
 	K &getKey() {
 		if (key != k)
 			return k;
@@ -30,6 +30,7 @@ public:
 template <typename K, typename V>
 class HashMap {
 
+	bool owner;
 	size_t length, count;
 	double loadFactor = 0.0;
 	const double rehashFactor = 0.65;
@@ -69,11 +70,32 @@ class HashMap {
 				put(keysCopy[i].value, valuesCopy[i]);
 			}
 		}
+		delete[] keysCopy;
+		delete[] valuesCopy;
 	}
 
 public:
-	HashMap() : length(2), count(0), keys(new Optional<K>[length]), values(new V[length]), hash(NULL) {}
-	HashMap(size_t length, size_t (*hash)(K key)) : length(length), count(0), keys(new Optional<K>[length], values(new V[length]), hash(hash)) {}
+	HashMap() : owner(true), length(2), count(0), keys(new Optional<K>[length]), values(new V[length]), hash(NULL) {}
+	HashMap(size_t length, size_t (*hash)(K key)) : owner(true), length(length), count(0), keys(new Optional<K>[length], values(new V[length]), hash(hash)) {}
+	HashMap(const HashMap<K, V> &other) : owner(false), length(other.length), count(other.count), keys(other.keys), values(other.values), hash(other.hash) {}
+	~HashMap() {
+		if (owner) {
+			delete[] keys;
+			delete[] values;
+		}
+	}
+
+	HashMap<K, V> &operator=(const HashMap<K, V> &other) {
+		HashMap<K, V> temp = HashMap<K, V>(other);
+		std::swap(this->owner, temp.owner);
+		std::swap(this->length, temp.length);
+		std::swap(this->count, temp.count);
+		std::swap(this->loadFactor, temp.loadFactor);
+		std::swap(this->keys, temp.keys);
+		std::swap(this->values, temp.values);
+		std::swap(this->hash, temp.hash);
+		return *this;
+	}
 
 	HashMap<K, V> &put(K key, V value) {
 		if (loadFactor >= rehashFactor)

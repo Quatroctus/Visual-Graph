@@ -50,8 +50,7 @@ void handleInputEvents(SDL_Event ev) {
 			Input::relX = 0.0F;
 			Input::relY = 0.0F;
 			motionNode = NULL;
-		}
-		else if (ev.button.button == SDL_BUTTON_LEFT) {
+		} else if (ev.button.button == SDL_BUTTON_LEFT) {
 			SDL_Point mouse = { (int)(float(Input::mouseX) - Camera::xOffset), (int)(float(Input::mouseY) - Camera::yOffset) };
 			std::vector<Entry<int, std::pair<Node<int>, std::vector<Arc<int>>>>> entries;
 			graph.getNodeMap().getEntries(entries);
@@ -65,16 +64,12 @@ void handleInputEvents(SDL_Event ev) {
 							if (connectedNode != NULL) {
 								connectedNode->selected = false;
 							}
-							for (Arc<int> &arc : graph.getNodeMap().get(node.value).value->second) {
-								if (arc.connectedValue == selectedNode->value) {
+							for (Arc<int> &arc : graph.getNodeMap().get(node.value).value->second)
+								if (arc.connectedValue == selectedNode->value)
 									changingArcs[0] = &arc;
-								}
-							}
-							for (Arc<int> &arc : graph.getNodeMap().get(selectedNode->value).value->second) {
-								if (arc.connectedValue == node.value) {
+							for (Arc<int> &arc : graph.getNodeMap().get(selectedNode->value).value->second)
+								if (arc.connectedValue == node.value)
 									changingArcs[1] = &arc;
-								}
-							}
 							beginkeyboardListening = changingArcs[0] != NULL && changingArcs[1] != NULL;
 							if (beginkeyboardListening) {
 								connectedNode = &node;
@@ -82,14 +77,12 @@ void handleInputEvents(SDL_Event ev) {
 								noCollision = false;
 							}
 						}
-					}
-					else if (selectedNode != NULL) {
-						graph.addArc(selectedNode->value, node.value, 1); // TODO: Think of some way to have the user specify the weight.
+					} else if (selectedNode != NULL) {
+						graph.addArc(selectedNode->value, node.value, 1);
 						graph.addArc(node.value, selectedNode->value, 1);
 						selectedNode->selected = false;
 						selectedNode = NULL;
-					}
-					else {
+					} else {
 						selectedNode = &node;
 						node.selected = true;
 						noCollision = false;
@@ -120,8 +113,7 @@ void handleInputEvents(SDL_Event ev) {
 		Input::keys.up(ev.key.keysym.sym);
 		if (beginkeyboardListening && ev.key.keysym.sym >= SDLK_0 && ev.key.keysym.sym <= SDLK_9) {
 			changingValue += (char)ev.key.keysym.sym;
-		}
-		else if (beginkeyboardListening && ev.key.keysym.sym == SDLK_BACKSPACE)
+		} else if (beginkeyboardListening && ev.key.keysym.sym == SDLK_BACKSPACE)
 			changingValue.pop_back();
 		else if (beginkeyboardListening && ev.key.keysym.sym == SDLK_RETURN) {
 			changingArcs[0]->weight = std::stoi(changingValue);
@@ -172,6 +164,22 @@ void handleEvent(SDL_Event ev) {
 	}
 }
 
+void drawChangingArcValue() {
+	if (!changingValue.empty()) {
+		if (FONT == NULL)
+			FONT = TTF_OpenFont("arial.ttf", 24);
+		SDL_Surface *surface;
+		SDL_Texture *texture;
+		SDL_Color textColor = { 255, 255, 255, 0 };
+		surface = TTF_RenderText_Solid(FONT, changingValue.c_str(), textColor);
+		texture = SDL_CreateTextureFromSurface(renderer, surface);
+		SDL_Rect dest = { 10, 10, surface->w, surface->h };
+		SDL_RenderCopy(renderer, texture, NULL, &dest);
+		SDL_FreeSurface(surface);
+		SDL_DestroyTexture(texture);
+	}
+}
+
 int main(int argc, char *argv[]) {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) > 0) {
 		std::cout << SDL_GetError() << std::endl;
@@ -210,6 +218,7 @@ int main(int argc, char *argv[]) {
 
 		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 		drawGraph(renderer, graph);
+		drawChangingArcValue();
 
 		SDL_SetRenderTarget(renderer, NULL);
 		SDL_RenderCopy(renderer, drawingTexture, &base, &actual);

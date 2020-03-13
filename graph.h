@@ -124,6 +124,12 @@ public:
 		return path;
 	}
 
+	std::vector<Node<V>> getMinimalSpanningTree() {
+		std::vector<Node<V>> spanningTree;
+
+		return spanningTree;
+	}
+
 	HashMap<V, std::pair<Node<V>, std::vector<Arc<V>>>> getNodeMap() {
 		return nodeMap;
 	}
