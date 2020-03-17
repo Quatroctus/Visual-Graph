@@ -1,7 +1,7 @@
 #include "input.h"
 
-int Input::scroll = 0, Input::mouseX = 0, Input::mouseY = 0;
-float Input::relX = 0.0F, Input::relY = 0.0F;
+int Input::scroll = 0;
+SDL_Point Input::mouse = { 0, 0 };
 InputMap Input::keys = InputMap();
 InputMap Input::mouseButtons = InputMap();
 

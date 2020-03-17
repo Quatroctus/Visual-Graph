@@ -1,5 +1,8 @@
 #pragma once
+#include <SDL_rect.h>
 #include <unordered_map>
+
+// Simple input stuff. Everything is constant time.
 
 class InputMap {
 
@@ -15,8 +18,8 @@ public:
 };
 
 struct Input {
-	static int scroll, mouseX, mouseY;
-	static float relX, relY;
+	static int scroll;
+	static SDL_Point mouse;
 	static InputMap mouseButtons;
 	static InputMap keys;
 };
